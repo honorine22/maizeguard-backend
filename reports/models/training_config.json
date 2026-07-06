@@ -1,0 +1,34 @@
+{
+  "notebook_version": "V9_label_audit_conservative_training",
+  "model_backbone": "mobilenetv3_large_100",
+  "pretraining": "ImageNet pretrained via timm",
+  "input_image_size": 320,
+  "classes": [
+    "good",
+    "broken",
+    "impurity",
+    "mold_risk"
+  ],
+  "loss": "gentle_class_weighted_cross_entropy",
+  "class_weight_power": 0.25,
+  "optimizer": "AdamW",
+  "lr_head": 0.0004,
+  "lr_finetune": 1e-05,
+  "weight_decay": 0.0003,
+  "official_evaluation": "raw argmax, single image pass, untouched public holdout split",
+  "sampling_strategy": "shuffle_train_loader_no_weighted_sampler",
+  "human_review_file_name": "broken_mold_review_decisions.csv",
+  "selected_device": "cpu",
+  "cuda_usable": false,
+  "deployment_safety_rule": {
+    "needs_review_confidence_below": 0.65,
+    "needs_review_top2_margin_below": 0.15,
+    "broken_mold_probability_margin_below": 0.12,
+    "broken_mold_min_probability": 0.2,
+    "patch_consensus_minimum": 0.5
+  },
+  "selected_training_phase": "head",
+  "selected_epoch": 2,
+  "selected_validation_macro_f1": 0.9142857142857143,
+  "selected_validation_broken_mold_f1": 0.8285714285714285
+}

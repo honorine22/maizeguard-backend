@@ -1,0 +1,5 @@
+source_dataset,label,images
+ck_cnn,broken,60
+ck_cnn,good,120
+ck_cnn,impurity,50
+ck_cnn,mold_risk,60

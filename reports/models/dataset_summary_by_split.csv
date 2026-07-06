@@ -1,0 +1,13 @@
+split,label,images
+test,broken,9
+train,broken,42
+val,broken,9
+test,good,18
+train,good,84
+val,good,18
+test,impurity,8
+train,impurity,35
+val,impurity,7
+test,mold_risk,9
+train,mold_risk,42
+val,mold_risk,9

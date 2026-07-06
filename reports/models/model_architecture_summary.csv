@@ -1,0 +1,13 @@
+item,value
+Backbone,mobilenetv3_large_100
+Pretraining,ImageNet via timm
+Input image size,320
+Classes,"good, broken, impurity, mold_risk"
+Optimizer,AdamW
+Training loss,Gentle class-weighted CrossEntropyLoss
+Sampling,Shuffle training loader; no weighted sampler
+Human label audit,Optional decision file before splitting
+Device used,cpu
+CUDA usable,False
+Total parameters,4207156
+Trainable parameters,4207156
