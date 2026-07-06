@@ -22,6 +22,7 @@ MODEL_PATH = Path(os.getenv("PYTORCH_MODEL_PATH", DEFAULT_MODEL_PATH))
 METADATA_PATH = Path(os.getenv("MODEL_METADATA_PATH", DEFAULT_METADATA_PATH))
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+torch.set_num_threads(int(os.getenv("TORCH_NUM_THREADS", "1")))
 
 app = FastAPI(title="MaizeGuard PyTorch Model API")
 
@@ -54,7 +55,7 @@ SAFETY_RULE = metadata.get("deployment_safety_rule", {})
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", SAFETY_RULE.get("needs_review_confidence_below", 0.65)))
 TOP2_MARGIN_THRESHOLD = float(os.getenv("TOP2_MARGIN_THRESHOLD", SAFETY_RULE.get("needs_review_top2_margin_below", 0.15)))
 MIXED_RISK_REVIEW_THRESHOLD = float(os.getenv("MIXED_RISK_REVIEW_THRESHOLD", SAFETY_RULE.get("mixed_risk_review_threshold", 0.55)))
-BATCH_INFERENCE_ENABLED = os.getenv("BATCH_INFERENCE_ENABLED", "true").lower() != "false"
+BATCH_INFERENCE_ENABLED = os.getenv("BATCH_INFERENCE_ENABLED", "false").lower() == "true"
 BATCH_TILE_MIN_SIDE = int(os.getenv("BATCH_TILE_MIN_SIDE", "360"))
 BATCH_TILE_SCALE = float(os.getenv("BATCH_TILE_SCALE", "0.62"))
 BATCH_TILE_RISK_WEIGHT = float(os.getenv("BATCH_TILE_RISK_WEIGHT", "0.35"))
@@ -261,6 +262,11 @@ def health_check():
         "batch_tile_min_side": BATCH_TILE_MIN_SIDE,
         "batch_tile_scale": BATCH_TILE_SCALE,
     }
+
+
+@app.get("/health")
+def health_alias():
+    return health_check()
 
 
 @app.post("/predict")
