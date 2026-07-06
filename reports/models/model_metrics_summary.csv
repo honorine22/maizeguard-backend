@@ -1,2 +1,2 @@
-model,device,evaluation_mode,accuracy,macro_precision,macro_recall,macro_f1,test_samples,mistakes,model_path
-mobilenetv3_large_100,cpu,"raw argmax, single image pass, no threshold post-processing",0.9772727272727273,0.975,0.9722222222222222,0.9721362229102167,44,1,model_server/model_exports/maizeguard_public_best_model.pt
+model,device,evaluation_mode,accuracy,macro_precision,macro_recall,macro_f1,broken_mold_test_f1,test_samples,mistakes,selected_validation_phase,selected_validation_macro_f1,selected_validation_broken_mold_f1,model_path
+mobilenetv3_large_100,cpu,"raw argmax, single image pass, untouched public holdout split",0.9545454545454546,0.975,0.9444444444444444,0.9555921052631579,0.9375,44,2,head,0.9142857142857143,0.8285714285714285,/kaggle/working/maizeguard_v9_label_audit/outputs/mobilenetv3_large_100_best.pt

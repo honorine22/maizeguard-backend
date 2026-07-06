@@ -1,0 +1,11 @@
+{
+  "selected_validation_macro_f1": 0.9142857142857143,
+  "selected_validation_broken_mold_f1": 0.8285714285714285,
+  "official_test_macro_f1": 0.9555921052631579,
+  "official_test_broken_mold_f1": 0.9375,
+  "official_test_accuracy": 0.9545454545454546,
+  "human_review_file_applied": false,
+  "review_template": "/kaggle/working/maizeguard_v9_label_audit/outputs/broken_mold_review_template.csv",
+  "audit_pages": "/kaggle/working/maizeguard_v9_label_audit/outputs/broken_mold_audit_pages",
+  "next_action": "Review ambiguous broken/mold source images, save broken_mold_review_decisions.csv, and run the notebook again."
+}

@@ -1,0 +1,11 @@
+{
+  "backend_model_files": [
+    "/kaggle/working/maizeguard_final_export/model_server/model_exports/maizeguard_public_best_model.pt",
+    "/kaggle/working/maizeguard_final_export/model_server/model_exports/maizeguard_model_metadata.json",
+    "/kaggle/working/maizeguard_final_export/model_server/model_exports/class_names.json"
+  ],
+  "submission_outputs_dir": "/kaggle/working/maizeguard_final_export/submission_outputs",
+  "copied_count": 38,
+  "missing_count": 0,
+  "missing": []
+}
