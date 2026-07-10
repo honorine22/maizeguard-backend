@@ -32,7 +32,7 @@ The deployed app may also show `Needs review` when the image is unclear, low con
 - Backend: FastAPI, Python, PyTorch, timm, Pillow
 - Model: MobileNetV3 Large with ImageNet transfer learning
 - Training environment: Kaggle notebook
-- Deployment: Vercel frontend and Render backend
+- Deployment: Vercel frontend and FastAPI backend on Render or Hugging Face Spaces
 
 ## Project Structure
 
@@ -191,6 +191,60 @@ Backend verification:
 https://maizeguard-backend-419n.onrender.com/health
 ```
 
+### Backend on Hugging Face Spaces
+
+Hugging Face Spaces is the recommended backend alternative when a small Render instance runs out of memory. Use a Docker Space and keep the app port as `7860`.
+
+Space settings:
+
+```text
+Owner: honorineigiraneza
+Space name: maizeguard-backend
+SDK: Docker
+App port: 7860
+```
+
+Files required in the Space repository:
+
+```text
+Dockerfile
+.dockerignore
+requirements.txt
+model_server/main.py
+model_server/pytorch_main.py
+model_server/requirements-pytorch.txt
+model_server/model_exports/maizeguard_public_best_model.pt
+model_server/model_exports/maizeguard_model_metadata.json
+model_server/model_exports/class_names.json
+```
+
+Deploy from this backend folder:
+
+```bash
+git clone https://huggingface.co/spaces/honorineigiraneza/maizeguard-backend /tmp/maizeguard-backend-space
+cp Dockerfile .dockerignore requirements.txt /tmp/maizeguard-backend-space/
+rm -rf /tmp/maizeguard-backend-space/model_server
+cp -R model_server /tmp/maizeguard-backend-space/model_server
+cd /tmp/maizeguard-backend-space
+git add Dockerfile .dockerignore requirements.txt model_server
+git commit -m "Deploy MaizeGuard FastAPI backend"
+git push
+```
+
+When Git asks for a password, use a Hugging Face access token with write permission. Do not paste the token into the project files.
+
+Hugging Face backend URL:
+
+```text
+https://honorineigiraneza-maizeguard-backend.hf.space
+```
+
+Backend verification:
+
+```text
+https://honorineigiraneza-maizeguard-backend.hf.space/health
+```
+
 ### Frontend on Vercel
 
 Vercel settings:
@@ -205,6 +259,12 @@ Frontend environment variable:
 
 ```text
 MODEL_API_URL=https://maizeguard-backend-419n.onrender.com
+```
+
+If using the Hugging Face backend instead of Render, set:
+
+```text
+MODEL_API_URL=https://honorineigiraneza-maizeguard-backend.hf.space
 ```
 
 After changing Vercel environment variables, redeploy the frontend. Existing deployments do not automatically use new environment values.
@@ -269,6 +329,8 @@ The model was trained and evaluated in Kaggle, then exported to the FastAPI back
 
 The backend uses single-image inference by default on Render to reduce memory and CPU load on the free instance.
 
+Deployment note: PyTorch can exceed the memory limit on very small free hosting instances. For the final demo, the same backend can also be run locally with `MODEL_API_URL=http://127.0.0.1:8000`, or deployed on a host with at least 1GB RAM.
+
 ## Final Model Results
 
 Final test results from `reports/models/model_metrics_summary.csv`:
@@ -330,3 +392,34 @@ Future work:
 - Add offline or low-connectivity mobile support.
 - Evaluate the model on larger real-world cooperative and market datasets.
 - Add a formal expert review workflow for uncertain predictions.
+
+## Video Demo Guide
+
+The 5-minute demo video should focus on core product functionality, not sign-up or sign-in.
+
+Recommended demo flow:
+
+1. Open the deployed or local MaizeGuard app.
+2. Show the upload interface and explain the purpose of the product.
+3. Upload a clear `good` maize image and show the result.
+4. Upload a `broken`, `impurity`, or `mold_risk` image to show different data values.
+5. Show an unclear or low-confidence case returning `Needs review`.
+6. Show testing evidence from `reports/models/`, especially the confusion matrix, metrics summary, and audit pages.
+7. Explain deployment: Vercel frontend, Render or local FastAPI backend, and the `MODEL_API_URL` connection.
+8. End with limitations, recommendations, and future work.
+
+## Submission Checklist
+
+- [x] README includes install and run steps.
+- [x] README includes related project files.
+- [x] README includes deployed frontend link.
+- [x] README includes backend API link.
+- [x] README includes 5-minute demo video link.
+- [x] README includes testing strategies and evidence files.
+- [x] README includes final model metrics and screenshots/plots.
+- [x] README includes deployment plan and environment variables.
+- [x] README includes analysis of results.
+- [x] README includes discussion of milestones and impact.
+- [x] README includes recommendations and future work.
+- [x] Final model files are in `model_server/model_exports/`.
+- [x] Final testing outputs are in `reports/models/`.

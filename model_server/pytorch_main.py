@@ -28,7 +28,10 @@ app = FastAPI(title="MaizeGuard PyTorch Model API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3006,https://maizeguard-frontend.vercel.app/").split(","),
+    allow_origins=os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:3000,http://localhost:3006,https://maizeguard-frontend.vercel.app,https://maizeguard-frontend-70xyc87wl-honorine22s-projects.vercel.app",
+    ).split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
