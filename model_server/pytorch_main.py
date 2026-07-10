@@ -58,6 +58,9 @@ SAFETY_RULE = metadata.get("deployment_safety_rule", {})
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", SAFETY_RULE.get("needs_review_confidence_below", 0.65)))
 TOP2_MARGIN_THRESHOLD = float(os.getenv("TOP2_MARGIN_THRESHOLD", SAFETY_RULE.get("needs_review_top2_margin_below", 0.15)))
 MIXED_RISK_REVIEW_THRESHOLD = float(os.getenv("MIXED_RISK_REVIEW_THRESHOLD", SAFETY_RULE.get("mixed_risk_review_threshold", 0.55)))
+UNSUPPORTED_MIN_MAIZE_COLOR_RATIO = float(os.getenv("UNSUPPORTED_MIN_MAIZE_COLOR_RATIO", SAFETY_RULE.get("unsupported_min_maize_color_ratio", 0.08)))
+UNSUPPORTED_BORDERLINE_MAIZE_COLOR_RATIO = float(os.getenv("UNSUPPORTED_BORDERLINE_MAIZE_COLOR_RATIO", SAFETY_RULE.get("unsupported_borderline_maize_color_ratio", 0.14)))
+UNSUPPORTED_MIN_TEXTURE_STD = float(os.getenv("UNSUPPORTED_MIN_TEXTURE_STD", SAFETY_RULE.get("unsupported_min_texture_std", 16.0)))
 BATCH_INFERENCE_ENABLED = os.getenv("BATCH_INFERENCE_ENABLED", "false").lower() == "true"
 BATCH_TILE_MIN_SIDE = int(os.getenv("BATCH_TILE_MIN_SIDE", "360"))
 BATCH_TILE_SCALE = float(os.getenv("BATCH_TILE_SCALE", "0.62"))
@@ -78,6 +81,13 @@ valid_tfms = transforms.Compose(
 
 
 def recommendation_for(label: str, needs_review: bool):
+    if label == "unsupported_image":
+        return {
+            "risk": "Unsupported image",
+            "action": "Upload maize image",
+            "recommendation": "This image does not appear to show a maize sample. Upload a clear close-up photo of shelled maize.",
+        }
+
     if needs_review:
         return {
             "risk": "Needs review",
@@ -248,6 +258,66 @@ def image_quality_review(image: Image.Image) -> Tuple[bool, Optional[str]]:
     return False, None
 
 
+def maize_visual_features(image: Image.Image):
+    small = image.convert("RGB").resize((160, 160))
+    array = np.asarray(small, dtype=np.float32)
+    red = array[:, :, 0]
+    green = array[:, :, 1]
+    blue = array[:, :, 2]
+    brightness = array.mean(axis=2)
+
+    yellow_or_tan = (
+        (red > 70)
+        & (green > 55)
+        & (red >= green * 0.90)
+        & (green >= blue * 0.95)
+        & ((red - blue) > 15)
+    )
+    pale_kernel = (
+        (red > 125)
+        & (green > 105)
+        & (blue > 70)
+        & (np.abs(red - green) < 65)
+        & ((red - blue) > 10)
+    )
+    brown_kernel = (
+        (red > 45)
+        & (green > 30)
+        & (blue < 130)
+        & (red >= green * 0.75)
+        & (green >= blue * 0.70)
+    )
+    valid_brightness = (brightness > 30) & (brightness < 248)
+    maize_like = (yellow_or_tan | pale_kernel | brown_kernel) & valid_brightness
+
+    gray = brightness
+    grad_y, grad_x = np.gradient(gray)
+    edge_strength = np.sqrt((grad_x ** 2) + (grad_y ** 2))
+
+    return {
+        "maize_color_ratio": float(maize_like.mean()),
+        "texture_std": float(gray.std()),
+        "edge_density": float((edge_strength > 18).mean()),
+    }
+
+
+def unsupported_image_reason(image: Image.Image) -> Optional[str]:
+    features = maize_visual_features(image)
+    maize_color_ratio = features["maize_color_ratio"]
+    texture_std = features["texture_std"]
+
+    if maize_color_ratio < UNSUPPORTED_MIN_MAIZE_COLOR_RATIO:
+        return "The image does not appear to contain enough maize-like grain color or texture."
+
+    if (
+        maize_color_ratio < UNSUPPORTED_BORDERLINE_MAIZE_COLOR_RATIO
+        and texture_std < UNSUPPORTED_MIN_TEXTURE_STD
+    ):
+        return "The image is not visually consistent with a close-up maize sample."
+
+    return None
+
+
 @app.get("/")
 def health_check():
     return {
@@ -261,6 +331,9 @@ def health_check():
         "confidence_threshold": CONFIDENCE_THRESHOLD,
         "top2_margin_threshold": TOP2_MARGIN_THRESHOLD,
         "mixed_risk_review_threshold": MIXED_RISK_REVIEW_THRESHOLD,
+        "unsupported_min_maize_color_ratio": UNSUPPORTED_MIN_MAIZE_COLOR_RATIO,
+        "unsupported_borderline_maize_color_ratio": UNSUPPORTED_BORDERLINE_MAIZE_COLOR_RATIO,
+        "unsupported_min_texture_std": UNSUPPORTED_MIN_TEXTURE_STD,
         "batch_inference_enabled": BATCH_INFERENCE_ENABLED,
         "batch_tile_min_side": BATCH_TILE_MIN_SIDE,
         "batch_tile_scale": BATCH_TILE_SCALE,
@@ -277,6 +350,7 @@ async def predict(image: UploadFile = File(...)):
     image_bytes = await image.read()
     pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     quality_review, quality_reason = image_quality_review(pil_image)
+    unsupported_reason = None if quality_review else unsupported_image_reason(pil_image)
 
     avg_probs, view_summaries = predict_views(pil_image)
 
@@ -286,11 +360,13 @@ async def predict(image: UploadFile = File(...)):
     sorted_probs = np.sort(avg_probs)[::-1]
     top2_margin = float(sorted_probs[0] - sorted_probs[1]) if len(sorted_probs) > 1 else 1.0
     mixed_reason = mixed_risk_reason(avg_probs, raw_label)
-    review = quality_review or needs_review(avg_probs, confidence) or mixed_reason is not None
-    review_reason = quality_reason or mixed_reason
+    is_unsupported = unsupported_reason is not None
+    review = is_unsupported or quality_review or needs_review(avg_probs, confidence) or mixed_reason is not None
+    review_reason = unsupported_reason or quality_reason or mixed_reason
+    final_label = "unsupported_image" if is_unsupported else raw_label
 
     return {
-        "label": raw_label,
+        "label": final_label,
         "raw_label": raw_label,
         "confidence": round(confidence, 4),
         "confidence_percent": round(confidence * 100, 2),
@@ -306,5 +382,5 @@ async def predict(image: UploadFile = File(...)):
             CLASS_NAMES[index]: round(float(avg_probs[index]), 4)
             for index in range(len(CLASS_NAMES))
         },
-        **recommendation_for(raw_label, review),
+        **recommendation_for(final_label, review),
     }
