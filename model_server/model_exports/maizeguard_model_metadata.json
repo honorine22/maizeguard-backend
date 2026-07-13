@@ -25,7 +25,11 @@
     "needs_review_top2_margin_below": 0.15,
     "broken_mold_probability_margin_below": 0.12,
     "broken_mold_min_probability": 0.2,
-    "patch_consensus_minimum": 0.5
+    "patch_consensus_minimum": 0.5,
+    "unsupported_label": "unsupported_image",
+    "unsupported_min_maize_color_ratio": 0.08,
+    "unsupported_borderline_maize_color_ratio": 0.14,
+    "unsupported_min_texture_std": 16.0
   },
   "selected_training_phase": "head",
   "selected_epoch": 2,

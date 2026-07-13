@@ -361,7 +361,7 @@ async def predict(image: UploadFile = File(...)):
     top2_margin = float(sorted_probs[0] - sorted_probs[1]) if len(sorted_probs) > 1 else 1.0
     mixed_reason = mixed_risk_reason(avg_probs, raw_label)
     is_unsupported = unsupported_reason is not None
-    review = is_unsupported or quality_review or needs_review(avg_probs, confidence) or mixed_reason is not None
+    review = False if is_unsupported else quality_review or needs_review(avg_probs, confidence) or mixed_reason is not None
     review_reason = unsupported_reason or quality_reason or mixed_reason
     final_label = "unsupported_image" if is_unsupported else raw_label
 
