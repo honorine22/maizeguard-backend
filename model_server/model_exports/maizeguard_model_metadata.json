@@ -29,7 +29,9 @@
     "unsupported_label": "unsupported_image",
     "unsupported_min_maize_color_ratio": 0.08,
     "unsupported_borderline_maize_color_ratio": 0.14,
-    "unsupported_min_texture_std": 16.0
+    "unsupported_min_texture_std": 16.0,
+    "unsupported_override_confidence": 0.9,
+    "unsupported_override_top2_margin": 0.5
   },
   "selected_training_phase": "head",
   "selected_epoch": 2,

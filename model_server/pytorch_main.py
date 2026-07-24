@@ -61,6 +61,8 @@ MIXED_RISK_REVIEW_THRESHOLD = float(os.getenv("MIXED_RISK_REVIEW_THRESHOLD", SAF
 UNSUPPORTED_MIN_MAIZE_COLOR_RATIO = float(os.getenv("UNSUPPORTED_MIN_MAIZE_COLOR_RATIO", SAFETY_RULE.get("unsupported_min_maize_color_ratio", 0.08)))
 UNSUPPORTED_BORDERLINE_MAIZE_COLOR_RATIO = float(os.getenv("UNSUPPORTED_BORDERLINE_MAIZE_COLOR_RATIO", SAFETY_RULE.get("unsupported_borderline_maize_color_ratio", 0.14)))
 UNSUPPORTED_MIN_TEXTURE_STD = float(os.getenv("UNSUPPORTED_MIN_TEXTURE_STD", SAFETY_RULE.get("unsupported_min_texture_std", 16.0)))
+UNSUPPORTED_OVERRIDE_CONFIDENCE = float(os.getenv("UNSUPPORTED_OVERRIDE_CONFIDENCE", SAFETY_RULE.get("unsupported_override_confidence", 0.90)))
+UNSUPPORTED_OVERRIDE_TOP2_MARGIN = float(os.getenv("UNSUPPORTED_OVERRIDE_TOP2_MARGIN", SAFETY_RULE.get("unsupported_override_top2_margin", 0.50)))
 BATCH_INFERENCE_ENABLED = os.getenv("BATCH_INFERENCE_ENABLED", "false").lower() == "true"
 BATCH_TILE_MIN_SIDE = int(os.getenv("BATCH_TILE_MIN_SIDE", "360"))
 BATCH_TILE_SCALE = float(os.getenv("BATCH_TILE_SCALE", "0.62"))
@@ -318,6 +320,21 @@ def unsupported_image_reason(image: Image.Image) -> Optional[str]:
     return None
 
 
+def should_use_unsupported_label(unsupported_reason: Optional[str], raw_label: str, confidence: float, top2_margin: float) -> bool:
+    if unsupported_reason is None:
+        return False
+
+    # The colour heuristic can be too strict for sparse broken kernels on a
+    # plain white background. If the model is very confident in a known maize
+    # class, keep the model class and recommendation instead of overriding it.
+    confident_maize_prediction = (
+        raw_label in CLASS_NAMES
+        and confidence >= UNSUPPORTED_OVERRIDE_CONFIDENCE
+        and top2_margin >= UNSUPPORTED_OVERRIDE_TOP2_MARGIN
+    )
+    return not confident_maize_prediction
+
+
 @app.get("/")
 def health_check():
     return {
@@ -334,6 +351,8 @@ def health_check():
         "unsupported_min_maize_color_ratio": UNSUPPORTED_MIN_MAIZE_COLOR_RATIO,
         "unsupported_borderline_maize_color_ratio": UNSUPPORTED_BORDERLINE_MAIZE_COLOR_RATIO,
         "unsupported_min_texture_std": UNSUPPORTED_MIN_TEXTURE_STD,
+        "unsupported_override_confidence": UNSUPPORTED_OVERRIDE_CONFIDENCE,
+        "unsupported_override_top2_margin": UNSUPPORTED_OVERRIDE_TOP2_MARGIN,
         "batch_inference_enabled": BATCH_INFERENCE_ENABLED,
         "batch_tile_min_side": BATCH_TILE_MIN_SIDE,
         "batch_tile_scale": BATCH_TILE_SCALE,
@@ -360,9 +379,9 @@ async def predict(image: UploadFile = File(...)):
     sorted_probs = np.sort(avg_probs)[::-1]
     top2_margin = float(sorted_probs[0] - sorted_probs[1]) if len(sorted_probs) > 1 else 1.0
     mixed_reason = mixed_risk_reason(avg_probs, raw_label)
-    is_unsupported = unsupported_reason is not None
-    review = False if is_unsupported else quality_review or needs_review(avg_probs, confidence) or mixed_reason is not None
-    review_reason = unsupported_reason or quality_reason or mixed_reason
+    is_unsupported = should_use_unsupported_label(unsupported_reason, raw_label, confidence, top2_margin)
+    review = False
+    review_reason = unsupported_reason if is_unsupported else None
     final_label = "unsupported_image" if is_unsupported else raw_label
 
     return {

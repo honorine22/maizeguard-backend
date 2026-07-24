@@ -25,7 +25,9 @@
     "needs_review_top2_margin_below": 0.15,
     "broken_mold_probability_margin_below": 0.12,
     "broken_mold_min_probability": 0.2,
-    "patch_consensus_minimum": 0.5
+    "patch_consensus_minimum": 0.5,
+    "unsupported_override_confidence": 0.9,
+    "unsupported_override_top2_margin": 0.5
   },
   "selected_training_phase": "head",
   "selected_epoch": 2,

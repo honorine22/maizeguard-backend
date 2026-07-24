@@ -14,7 +14,7 @@ The deployed app may also show `Needs review` when the image is unclear, low con
 ## Submission Links
 
 - Deployed frontend: https://maizeguard-frontend.vercel.app
-- Deployed backend API: https://maizeguard-backend-419n.onrender.com
+- Deployed backend API: https://honorineigiraneza-maizeguard-backend.hf.space
 - Demo video: https://youtu.be/0U93bL54p_g
 
 ## Core Functionality
@@ -166,7 +166,9 @@ Example response fields:
 
 ### Backend on Render
 
-Render settings:
+Render was tested as an initial backend host, but the final submitted backend uses Hugging Face Spaces because the model server needs more memory than the smallest Render instance provided.
+
+Render settings, if reused:
 
 ```text
 Root directory: capstone-backend
@@ -185,7 +187,7 @@ TORCH_NUM_THREADS=1
 CORS_ORIGINS=http://localhost:3000,https://maizeguard-frontend.vercel.app,https://maizeguard-frontend-70xyc87wl-honorine22s-projects.vercel.app
 ```
 
-Backend verification:
+Old Render backend verification:
 
 ```text
 https://maizeguard-backend-419n.onrender.com/health
@@ -258,13 +260,13 @@ Output: Next.js default
 Frontend environment variable:
 
 ```text
-MODEL_API_URL=https://maizeguard-backend-419n.onrender.com
+MODEL_API_URL=https://honorineigiraneza-maizeguard-backend.hf.space
 ```
 
-If using the Hugging Face backend instead of Render, set:
+The frontend code also supports:
 
 ```text
-MODEL_API_URL=https://honorineigiraneza-maizeguard-backend.hf.space
+NEXT_PUBLIC_MODEL_API_URL=https://honorineigiraneza-maizeguard-backend.hf.space
 ```
 
 After changing Vercel environment variables, redeploy the frontend. Existing deployments do not automatically use new environment values.
@@ -283,7 +285,7 @@ The main workflow was tested by uploading maize images through the frontend and 
 - risk level
 - action
 - recommendation
-- `Needs review` when appropriate
+- unsupported/non-maize handling when appropriate
 
 Relevant files:
 
@@ -309,7 +311,9 @@ Relevant files:
 
 ### 3. Edge case and safety testing
 
-The deployment logic flags uncertain predictions as `Needs review` when confidence is low, the top-two margin is small, image quality is poor, or broken and mold-risk probabilities are too close. This prevents the system from giving misleading confident advice on unclear images.
+The deployment logic keeps high-confidence maize predictions as their actual class, even when a sparse image has a plain background. This prevents a real `broken`, `good`, `impurity`, or `mold_risk` result from being overwritten by the visual unsupported-image heuristic.
+
+Non-maize or clearly unsupported uploads are handled separately as `unsupported_image`, so the user is asked to upload a clear maize image.
 
 Relevant files:
 
@@ -317,19 +321,54 @@ Relevant files:
 - `reports/models/broken_mold_pair_confusion.csv`
 - `reports/models/broken_mold_audit_pages/`
 
-### 4. Performance and environment testing
+### 4. Automated backend unit and integration testing
+
+The backend includes a pytest suite in `tests/`.
+
+Install the test dependencies:
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+Run the tests:
+
+```bash
+pytest
+```
+
+The automated tests cover:
+
+- `/health` API readiness and model metadata
+- recommendation mapping for supported classes
+- maize predictions keep their actual class and recommendation
+- image-quality checks for tiny or blank images
+- unsupported-image detection for non-maize visual inputs
+- `/predict` integration response shape using mocked model inference
+- unsupported-image API responses
+- frontend/backend contract checks for the Hugging Face model URL
+- frontend handling for `review_reason` and unsupported responses
+- deployed favicon presence
+
+Latest local result:
+
+```text
+14 passed
+```
+
+### 5. Performance and environment testing
 
 The model was trained and evaluated in Kaggle, then exported to the FastAPI backend. The application was prepared for deployment with:
 
 - Kaggle notebook training/evaluation
 - local backend API checks
 - Next.js production build checks
-- Render backend deployment settings
+- Hugging Face Spaces backend deployment settings
 - Vercel frontend deployment settings
 
-The backend uses single-image inference by default on Render to reduce memory and CPU load on the free instance.
+The backend uses single-image inference by default to reduce memory and CPU load on small deployment instances.
 
-Deployment note: PyTorch can exceed the memory limit on very small free hosting instances. For the final demo, the same backend can also be run locally with `MODEL_API_URL=http://127.0.0.1:8000`, or deployed on a host with at least 1GB RAM.
+Deployment note: PyTorch can exceed the memory limit on very small free hosting instances. For the final demo, the backend is deployed on Hugging Face Spaces and can also be run locally with `MODEL_API_URL=http://127.0.0.1:8000`.
 
 ## Final Model Results
 
